@@ -85,23 +85,23 @@ For now, only a subset of the `CATapDescription` (https://developer.apple.com/do
 ./audiotee --chunk-duration 0.1
 ```
 
-## Output Formats
+## Output formats
 
 AudioTee supports two output formats optimised for different use cases:
 
-### JSON Format (`--format json` or auto in terminal)
+### JSON format (`--format json` or auto in terminal)
 
 JSON messages to stdout, one per line. Audio data is base64-encoded for terminal safety.
 
-### Binary Format (`--format binary` or auto when piped)
+### Binary format (`--format binary` or auto when piped)
 
 JSON metadata lines followed by raw binary audio data. More efficient for piping to other processes.
 
 ## Protocol
 
-### Message Types
+### Message types
 
-All messages follow this envelope structure:
+All messages (except raw binary audio chunks) follow this envelope structure:
 
 ```json
 {
@@ -111,7 +111,7 @@ All messages follow this envelope structure:
 }
 ```
 
-#### 1. Metadata Message
+#### 1. Metadata
 
 Sent once at startup to describe the audio format:
 
@@ -132,7 +132,7 @@ Sent once at startup to describe the audio format:
 }
 ```
 
-#### 2. Stream Start Message
+#### 2. Stream start
 
 Indicates audio data will follow:
 
@@ -144,7 +144,7 @@ Indicates audio data will follow:
 }
 ```
 
-#### 3. Audio Data Messages
+#### 3. Audio data
 
 **JSON format:**
 
@@ -178,7 +178,7 @@ Indicates audio data will follow:
 
 _Followed immediately by 9600 bytes of raw binary audio data_
 
-#### 4. Stream Stop Message
+#### 4. Stream stop
 
 Sent when recording stops:
 
@@ -190,7 +190,7 @@ Sent when recording stops:
 }
 ```
 
-#### 5. Log Messages
+#### 5. Log messages
 
 Info, error, and debug messages (useful for monitoring):
 
@@ -205,25 +205,25 @@ Info, error, and debug messages (useful for monitoring):
 }
 ```
 
-### Consuming Output
+### Consuming output
 
-**JSON Format:**
+**JSON format:**
 
 1. Parse each line as JSON using the envelope structure
 2. Use `metadata` message to understand the audio format
 3. For `audio` messages, decode `audio_data` from base64 to get raw PCM data
-4. Handle the format specified in metadata (may be converted if `--convert-to` was used)
+4. Do something with each chuunk of data
 
-**Binary Format:**
+**Binary format:**
 
 1. Parse JSON metadata lines using the envelope structure
 2. Use `metadata` message to understand the audio format
 3. For `audio` messages, read `audio_length` bytes of raw binary data after the JSON line
-4. Handle the format specified in metadata (may be converted if `--convert-to` was used)
+4. Do something with each chuunk of data
 
 **Note**: binary is actually a mixed mode; JSON during boot, JSON packet header information preceding each binary chunk.
 
-## Command Line Options
+## Command Line options
 
 - `--format, -f`: Output format (`json`, `binary`, `auto`) [default: `auto`]
 - `--processes`: Process IDs to tap (space-separated, empty = all processes)
@@ -235,7 +235,7 @@ Info, error, and debug messages (useful for monitoring):
 ## Permissions
 
 There is no provision in the code to pre-emptively check for the required `NSAudioCaptureUsageDescription` permission,
-so you'll be prompted the first time AudioTee tries to record anything. If you want to probe and request permissions ahead of time, check out [AudioCap's clever TCC probing approach](https://github.com/insidegui/AudioCap/blob/main/AudioCap/ProcessTap/AudioRecordingPermission.swift).
+so you'll be prompted the first time AudioTee tries to record anything. If you want to check and/or request permissions ahead of time, check out [AudioCap's clever TCC probing approach](https://github.com/insidegui/AudioCap/blob/main/AudioCap/ProcessTap/AudioRecordingPermission.swift).
 
 ## References
 
