@@ -22,8 +22,8 @@ struct AudioTee: ParsableCommand {
         audiotee                              # Auto format, tap all processes
         audiotee --format=json                # Always use JSON format
         audiotee --format=binary              # Always use binary format
-        audiotee --convert-to=16000           # Convert to 16kHz mono for ASR
-        audiotee --convert-to=8000            # Convert to 8kHz for telephony
+        audiotee --sample-rate=16000          # Convert to 16kHz mono for ASR
+        audiotee --sample-rate=8000           # Convert to 8kHz for telephony
         audiotee --include-processes 1234     # Only tap process 1234
         audiotee --include-processes 1234 5678 9012  # Tap only these processes
         audiotee --exclude-processes 1234 5678       # Tap everything except these
@@ -47,8 +47,8 @@ struct AudioTee: ParsableCommand {
 
   @Option(
     name: .long,
-    help: "Convert audio to specified sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)")
-  var convertTo: Double?
+    help: "Target sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)")
+  var sampleRate: Double?
 
   @Option(
     name: .long,
@@ -108,7 +108,7 @@ struct AudioTee: ParsableCommand {
 
     let outputHandler = createOutputHandler(for: format)
     let recorder = AudioRecorder(
-      deviceID: deviceID, outputHandler: outputHandler, convertToSampleRate: convertTo,
+      deviceID: deviceID, outputHandler: outputHandler, convertToSampleRate: sampleRate,
       chunkDuration: chunkDuration)
     recorder.startRecording()
 

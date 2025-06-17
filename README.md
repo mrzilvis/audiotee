@@ -2,7 +2,7 @@
 
 AudioTee captures your Mac's system audio output and writes PCM encoded chunks of it to `stdout` at regular intervals, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
 
-By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not configurable) and preserves your output device's sample rate unless you pass a `--convert-to` flag. Only the default output device is currently supported.
+By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not configurable) and preserves your output device's sample rate unless you pass a `--sample-rate` flag. Only the default output device is currently supported.
 
 My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome.
 
@@ -50,10 +50,10 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 
 ```bash
 # Convert to 16kHz mono (useful for ASR services)
-./audiotee --convert-to 16000
+./audiotee --sample-rate 16000
 
 # Other supported sample rates: 22050, 24000, 32000, 44100, 48000
-./audiotee --convert-to 44100
+./audiotee --sample-rate 44100
 ```
 
 ### Tap configuration
@@ -229,7 +229,7 @@ Info, error, and debug messages (useful for monitoring):
 - `--include-processes`: Process IDs to tap (space-separated, empty = all processes)
 - `--exclude-processes`: Process IDs to exclude (space-separated, empty = none)
 - `--mute`: Mute processes being tapped
-- `--convert-to`: Convert to sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)
+- `--sample-rate`: Target sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)
 - `--chunk-duration`: Audio chunk duration in seconds [default: 0.2, max: 5.0]
 
 ## Permissions
