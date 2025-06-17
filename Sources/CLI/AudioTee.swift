@@ -13,21 +13,21 @@ struct AudioTee: ParsableCommand {
       • binary: Raw binary audio with JSON metadata headers (efficient for pipes)
       • auto: Automatically choose based on whether stdout is a terminal (default)
 
-      Tap configuration:
-      • processes: List of process IDs to tap (empty = all processes)
+      Process filtering:
+      • include-processes: Only tap specified process IDs (empty = all processes)
+      • exclude-processes: Tap all processes except specified ones
       • mute: How to handle processes being tapped
-      • exclusive: Whether to use exclusive mode
 
       Examples:
-        audiotee                    # Auto format (JSON in terminal, binary when piped)
-        audiotee --format=json      # Always use JSON format
-        audiotee --format=binary    # Always use binary format
-        audiotee --convert-to=16000 # Convert to 16kHz mono for ASR
-        audiotee --convert-to=8000  # Convert to 8kHz for telephony
-        audiotee --processes 1234   # Only tap process 1234
-        audiotee --processes 1234 5678 9012  # Tap multiple processes
-        audiotee --mute=muted       # Mute processes being tapped
-        audiotee --no-exclusive     # Don't use exclusive mode
+        audiotee                              # Auto format, tap all processes
+        audiotee --format=json                # Always use JSON format
+        audiotee --format=binary              # Always use binary format
+        audiotee --convert-to=16000           # Convert to 16kHz mono for ASR
+        audiotee --convert-to=8000            # Convert to 8kHz for telephony
+        audiotee --include-processes 1234     # Only tap process 1234
+        audiotee --include-processes 1234 5678 9012  # Tap only these processes
+        audiotee --exclude-processes 1234 5678       # Tap everything except these
+        audiotee --mute                       # Mute processes being tapped
       """
   )
 
@@ -35,14 +35,15 @@ struct AudioTee: ParsableCommand {
   var format: OutputFormat = .auto
 
   @Option(
-    name: .long, help: "Process IDs to tap (space-separated for multiple, empty = all processes)")
-  var processes: [Int32] = []
+    name: .long, help: "Process IDs to include (space-separated, empty = all processes)")
+  var includeProcesses: [Int32] = []
 
-  @Option(name: .long, help: "Mute behavior for tapped processes")
-  var mute: TapMuteBehavior = .unmuted
+  @Option(
+    name: .long, help: "Process IDs to exclude (space-separated)")
+  var excludeProcesses: [Int32] = []
 
-  @Flag(name: .long, inversion: .prefixedNo, help: "Use exclusive mode to capture all processes")
-  var exclusive: Bool = true
+  @Flag(name: .long, help: "Mute processes being tapped")
+  var mute: Bool = false
 
   @Option(
     name: .long,
@@ -53,6 +54,12 @@ struct AudioTee: ParsableCommand {
     name: .long,
     help: "Audio chunk duration in seconds (default: 0.2)")
   var chunkDuration: Double = 0.2
+
+  func validate() throws {
+    if !includeProcesses.isEmpty && !excludeProcesses.isEmpty {
+      throw ValidationError("Cannot specify both --include-processes and --exclude-processes")
+    }
+  }
 
   func run() throws {
     setupSignalHandlers()
@@ -68,10 +75,13 @@ struct AudioTee: ParsableCommand {
       throw ExitCode.failure
     }
 
+    // Convert include/exclude processes to TapConfiguration format
+    let (processes, isExclusive) = convertProcessFlags()
+
     let tapConfig = TapConfiguration(
       processes: processes,
-      muteBehavior: mute,
-      isExclusive: exclusive
+      muteBehavior: mute ? .muted : .unmuted,
+      isExclusive: isExclusive
     )
 
     let audioTapManager = AudioTapManager()
@@ -133,6 +143,19 @@ struct AudioTee: ParsableCommand {
       return BinaryAudioOutputHandler()
     case .auto:
       return AutoAudioOutputHandler()
+    }
+  }
+
+  private func convertProcessFlags() -> ([Int32], Bool) {
+    if !includeProcesses.isEmpty {
+      // Include specific processes only
+      return (includeProcesses, false)
+    } else if !excludeProcesses.isEmpty {
+      // Exclude specific processes (tap everything except these)
+      return (excludeProcesses, true)
+    } else {
+      // Default: tap everything
+      return ([], true)
     }
   }
 }

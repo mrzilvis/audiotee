@@ -1,6 +1,6 @@
 # AudioTee
 
-AudioTee captures your Mac's system audio output as PCM audio data and writes it to `stdout`, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
+AudioTee captures your Mac's system audio output and writes PCM encoded chunks of it to `stdout` at regular intervals, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
 
 By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not configurable) and preserves your output device's sample rate unless you pass a `--convert-to` flag. Only the default output device is currently supported.
 
@@ -64,22 +64,22 @@ For now, only a subset of the `CATapDescription` (https://developer.apple.com/do
 # Tap all system audio (default)
 ./audiotee
 
-# Tap everything *except* a specific process (by PID)
-./audiotee --processes 1234
-
 # Tap only a specific process (by PID)
-./audiotee --processes 1234 --no-exclusive
-
-# Exclude multiple specific processes
-./audiotee --processes 1234 5678 9012
+./audiotee --include-processes 1234
 
 # Tap multiple specific processes
-./audiotee --processes 1234 5678 9012 --no-exclusive
+./audiotee --include-processes 1234 5678 9012
+
+# Tap everything *except* a specific process (by PID)
+./audiotee --exclude-processes 1234
+
+# Exclude multiple specific processes
+./audiotee --exclude-processes 1234 5678 9012
 ```
 
 ```bash
 # Mute processes being tapped (so they don't play through speakers)
-./audiotee --mute muted
+./audiotee --mute
 
 # Custom chunk duration (default 0.2 seconds, max 5.0)
 ./audiotee --chunk-duration 0.1
@@ -212,23 +212,23 @@ Info, error, and debug messages (useful for monitoring):
 1. Parse each line as JSON using the envelope structure
 2. Use `metadata` message to understand the audio format
 3. For `audio` messages, decode `audio_data` from base64 to get raw PCM data
-4. Do something with each chuunk of data
+4. Do something with each chunk of data
 
 **Binary format:**
 
 1. Parse JSON metadata lines using the envelope structure
 2. Use `metadata` message to understand the audio format
 3. For `audio` messages, read `audio_length` bytes of raw binary data after the JSON line
-4. Do something with each chuunk of data
+4. Do something with each chunk of data
 
 **Note**: binary is actually a mixed mode; JSON during boot, JSON packet header information preceding each binary chunk.
 
 ## Command Line options
 
 - `--format, -f`: Output format (`json`, `binary`, `auto`) [default: `auto`]
-- `--processes`: Process IDs to tap (space-separated, empty = all processes)
-- `--mute`: Mute behavior (`unmuted`, `muted`) [default: `unmuted`]
-- `--exclusive/--no-exclusive`: Use exclusive mode [default: `--exclusive`]
+- `--include-processes`: Process IDs to tap (space-separated, empty = all processes)
+- `--exclude-processes`: Process IDs to exclude (space-separated, empty = none)
+- `--mute`: Mute processes being tapped
 - `--convert-to`: Convert to sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)
 - `--chunk-duration`: Audio chunk duration in seconds [default: 0.2, max: 5.0]
 

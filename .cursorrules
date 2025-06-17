@@ -2,6 +2,8 @@ This project is called AudioTee: it is a Swift CLI executable which allows the u
 
 It is designed to be executed as a child process by a host program which can stream its stdout. The original intended use case was to send system audio to a Streaming ASR service.g. AssemblyAI, Speechmatics, etc).
 
+When making code changes, please ensure README.md is kept up-to-date, if relevant.
+
 Some guidance on the Core Audio tap API from Apple:
 
 You create a tap by passing a CATapDescription to AudioHardwareCreateProcessTap. This returns an AudioObjectID for the new tap object. You can destroy a tap using AudioHardwareDestroyProcessTap:
