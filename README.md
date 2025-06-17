@@ -4,7 +4,7 @@ AudioTee captures your Mac's system audio output and writes chunks of it to `std
 
 By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not configurable) and preserves your output device's sample rate unless you pass a `--convert-to` flag. Only the default output device is currently supported.
 
-My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about changing them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome.
+My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome.
 
 Recording system audio is harder than it should be on macOS, and folks often wrestle with outdated advice and poorly documented APIs. It's a boring problem which stands in the way of lots of fun applications. There's more code here than you need to solve this problem yourself: the main classes of interest are probably `Core/AudioTapManager` and `Core/AudioRecorder`. Everything's wired together in `CLI/AudioTee`. The rest is just CLI configuration support, output formatting logic, and some utility functions you could probably live without.
 

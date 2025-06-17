@@ -23,7 +23,7 @@ public struct JSONAudioPacket: Codable {
 }
 
 /// Metadata-only packet for binary output (without base64 audio data)
-public struct AudioPacketMetadata: Codable {
+public struct BinaryPacketHeader: Codable {
   public let timestamp: Date
   public let duration: Double
   public let peakAmplitude: Float

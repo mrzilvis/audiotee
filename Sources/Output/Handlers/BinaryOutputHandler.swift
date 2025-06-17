@@ -6,7 +6,7 @@ public class BinaryAudioOutputHandler: AudioOutputHandler {
 
   public func handleAudioPacket(_ packet: AudioPacket) {
     // Create metadata without the audio data
-    let metadata = AudioPacketMetadata(from: packet)
+    let metadata = BinaryPacketHeader(from: packet)
 
     // Write JSON metadata line
     Logger.writeMessage(.audio, data: metadata)
