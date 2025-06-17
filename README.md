@@ -1,6 +1,6 @@
 # AudioTee
 
-AudioTee captures your Mac's system audio output and writes chunks of it to `stdout`, either in base64-encoded JSON (good for humans and easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
+AudioTee captures your Mac's system audio output as PCM audio data and writes it to `stdout`, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
 
 By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not configurable) and preserves your output device's sample rate unless you pass a `--convert-to` flag. Only the default output device is currently supported.
 
