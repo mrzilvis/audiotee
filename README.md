@@ -24,7 +24,7 @@ cd audiotee
 swift run
 ```
 
-If you're not playing audio when you run it, you'll just see packets full of `AAAAA...` - the base64 encoding of zero.
+If you're not playing audio when you run it, you'll just see packets full of `AAAAA...` - the base64 version of a bunch of zeroes.
 
 ## Build
 
