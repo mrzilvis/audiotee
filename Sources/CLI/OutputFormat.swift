@@ -1,6 +1,4 @@
-import ArgumentParser
-
-enum OutputFormat: String, CaseIterable, ExpressibleByArgument {
+enum OutputFormat: String, CaseIterable {
   case json = "json"
   case binary = "binary"
   case auto = "auto"

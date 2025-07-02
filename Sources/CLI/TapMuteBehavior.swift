@@ -1,7 +1,6 @@
-import ArgumentParser
 import CoreAudio
 
-public enum TapMuteBehavior: String, CaseIterable, ExpressibleByArgument {
+public enum TapMuteBehavior: String, CaseIterable {
   case unmuted = "unmuted"
   case muted = "muted"
 
