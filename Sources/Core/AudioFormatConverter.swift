@@ -56,11 +56,6 @@ public class AudioFormatConverter {
   public func transform(_ packet: AudioPacket) -> AudioPacket {
     let inputData = packet.rawAudioData
 
-    // Short-circuit if no conversion needed
-    if sourceFormat.sampleRate == targetFormat.sampleRate {
-      return packet
-    }
-
     // Calculate frame counts
     let inputFrameCount =
       inputData.count / Int(sourceFormat.streamDescription.pointee.mBytesPerFrame)
