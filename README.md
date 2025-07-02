@@ -1,12 +1,12 @@
 # AudioTee
 
-AudioTee captures your Mac's system audio output and writes PCM encoded chunks of it to `stdout` at regular intervals, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
+AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
 
-By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not configurable) and preserves your output device's sample rate unless you pass a `--sample-rate` flag. Only the default output device is currently supported.
+By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
 
 My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome.
 
-Recording system audio is harder than it should be on macOS, and folks often wrestle with outdated advice and poorly documented APIs. It's a boring problem which stands in the way of lots of fun applications. There's more code here than you need to solve this problem yourself: the main classes of interest are probably `Core/AudioTapManager` and `Core/AudioRecorder`. Everything's wired together in `CLI/AudioTee`. The rest is just CLI configuration support, output formatting logic, and some utility functions you could probably live without.
+Recording system audio is harder than it should be on macOS, and folks often wrestle with outdated advice and poorly documented APIs. It's a boring problem which stands in the way of lots of fun applications. There's more code here than you need to solve this problem yourself: the main classes of interest are probably [`Core/AudioTapManager`](https://github.com/makeusabrew/audiotee/blob/main/Sources/Core/AudioTapManager.swift) and [`Core/AudioRecorder`](https://github.com/makeusabrew/audiotee/blob/main/Sources/Core/AudioRecorder.swift). Everything's wired together in [`CLI/AudioTee`](https://github.com/makeusabrew/audiotee/blob/main/Sources/CLI/AudioTee.swift). The rest is just CLI configuration support, output formatting logic, and some utility functions you could probably live without.
 
 ## Requirements
 
@@ -16,11 +16,15 @@ Recording system audio is harder than it should be on macOS, and folks often wre
 
 ## Quick start
 
+The following will start capturing audio output from all running programs and write base64-encoded chunks of it to your terminal every 200ms:
+
 ```bash
 git clone git@github.com:makeusabrew/audiotee.git
 cd audiotee
 swift run
 ```
+
+If you're not playing audio when you run it, you'll just see packets full of `AAAAA...` - the base64 version of a bunch of zeroes.
 
 ## Build
 
@@ -48,6 +52,9 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 
 ### Audio conversion
 
+Note that performing sample rate conversion will also convert the output bit depth to
+16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but in any case it's a behaviour worth being aware of.
+
 ```bash
 # Convert to 16kHz mono (useful for ASR services)
 ./audiotee --sample-rate 16000
@@ -59,6 +66,8 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 ### Tap configuration
 
 For now, only a subset of the `CATapDescription` (https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) interface is exposed. PRs welcome.
+
+Note that trying to include or exclude a PID which isn't currently playing audio will probably fail to convert to an Audio Object and will cause the process to exit.
 
 ```bash
 # Tap all system audio (default)
