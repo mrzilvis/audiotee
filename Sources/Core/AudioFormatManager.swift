@@ -4,19 +4,81 @@ import Foundation
 
 public class AudioFormatManager {
   public static func getDeviceFormat(deviceID: AudioObjectID) -> AudioStreamBasicDescription {
-    var propertyAddress = getPropertyAddress(
-      selector: kAudioDevicePropertyStreamFormat,
-      scope: kAudioDevicePropertyScopeInput)
-    var propertySize = UInt32(MemoryLayout<AudioStreamBasicDescription>.stride)
-    var streamFormat = AudioStreamBasicDescription()
-    let status = AudioObjectGetPropertyData(
-      deviceID, &propertyAddress, 0, nil, &propertySize, &streamFormat)
+    // First, wait for the device to become alive/ready
+    let deviceReadyTimeout = 2.0  // 2 seconds max wait
+    let pollInterval = 0.1  // 100ms poll interval
+    let maxPolls = Int(deviceReadyTimeout / pollInterval)
 
-    guard status == noErr else {
-      fatalError("Failed to get stream format: \(status)")
+    Logger.debug(
+      "Waiting for audio device to become ready", context: ["device_id": String(deviceID)])
+
+    // Poll device readiness
+    for poll in 1...maxPolls {
+      if isAudioDeviceValid(deviceID) {
+        Logger.debug(
+          "Audio device is ready", context: ["device_id": String(deviceID), "polls": String(poll)])
+        break
+      }
+
+      if poll == maxPolls {
+        Logger.info(
+          "Device did not become ready within timeout, proceeding anyway",
+          context: [
+            "device_id": String(deviceID),
+            "timeout_seconds": String(deviceReadyTimeout),
+          ])
+        break
+      }
+
+      Logger.info("------- not ready; retrying...")
+
+      Thread.sleep(forTimeInterval: pollInterval)
     }
 
-    return streamFormat
+    // Now attempt to get the stream format with limited retries
+    let maxRetries = 3  // Reduced since device should be ready
+    let retryDelayMs = 20  // Shorter delay since we've already waited for readiness
+
+    for attempt in 1...maxRetries {
+      var propertyAddress = getPropertyAddress(
+        selector: kAudioDevicePropertyStreamFormat,
+        scope: kAudioDevicePropertyScopeInput)
+      var propertySize = UInt32(MemoryLayout<AudioStreamBasicDescription>.stride)
+      var streamFormat = AudioStreamBasicDescription()
+      let status = AudioObjectGetPropertyData(
+        deviceID, &propertyAddress, 0, nil, &propertySize, &streamFormat)
+
+      if status == noErr {
+        Logger.debug("Successfully retrieved device format", context: ["attempt": String(attempt)])
+        return streamFormat
+      }
+
+      Logger.info(
+        "------- Failed to get stream format after device ready check, retrying...",
+        context: [
+          "attempt": String(attempt),
+          "max_retries": String(maxRetries),
+          "status": String(status),
+          "device_id": String(deviceID),
+        ])
+
+      // Don't delay on the last attempt
+      if attempt < maxRetries {
+        Thread.sleep(forTimeInterval: Double(retryDelayMs) / 1000.0)
+      }
+    }
+
+    // If all attempts failed after device readiness confirmation, this is a genuine error
+    Logger.error(
+      "Failed to get device format after device readiness check and retries",
+      context: [
+        "device_id": String(deviceID),
+        "device_was_ready": "true",
+      ])
+
+    fatalError(
+      "Failed to get stream format from ready device: \(deviceID). This indicates a Core Audio subsystem error."
+    )
   }
 
   static func createMetadata(for format: AudioStreamBasicDescription) -> AudioStreamMetadata {
