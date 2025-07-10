@@ -74,7 +74,7 @@ public class AudioRecorder {
     Logger.info("Audio device started successfully")
   }
 
-  // FIXME: note to self, what about installTap? Would require audio engine and a node?
+  // Note to self, what about installTap? Would require audio engine and a node?
   // No; AudioEngine.installTap() can only fire as often as 100ms. too slow for us
   private func setupAndStartIOProc() {
     Logger.debug("Creating IO proc")
@@ -127,8 +127,8 @@ public class AudioRecorder {
 
   func stopRecording() {
     // Send any remaining buffered audio, applying conversion if needed
-    if let finalPacket = audioBuffer?.flushRemaining() {
-      let processedPacket = converter?.transform(finalPacket) ?? finalPacket
+    audioBuffer?.processChunks().forEach { packet in
+      let processedPacket = converter?.transform(packet) ?? packet
       outputHandler.handleAudioPacket(processedPacket)
     }
 
