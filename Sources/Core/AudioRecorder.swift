@@ -75,6 +75,7 @@ public class AudioRecorder {
   }
 
   // FIXME: note to self, what about installTap? Would require audio engine and a node?
+  // No; AudioEngine.installTap() can only fire as often as 100ms. too slow for us
   private func setupAndStartIOProc() {
     Logger.debug("Creating IO proc")
     var status = AudioDeviceCreateIOProcID(
