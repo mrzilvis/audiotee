@@ -200,7 +200,7 @@ struct AudioTee {
 // Helper for stderr output
 var standardError = FileHandle.standardError
 
-extension FileHandle: @retroactive TextOutputStream {
+extension FileHandle: TextOutputStream {
   public func write(_ string: String) {
     let data = Data(string.utf8)
     self.write(data)
