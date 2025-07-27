@@ -24,8 +24,8 @@ struct AudioTee {
 
         Examples:
           audiotee                              # Auto format, tap all processes
-          audiotee --sample-rate=16000          # Convert to 16kHz mono for ASR
-          audiotee --sample-rate=8000           # Convert to 8kHz for telephony
+          audiotee --sample-rate 16000          # Convert to 16kHz mono for ASR
+          audiotee --sample-rate 8000           # Convert to 8kHz for telephony
           audiotee --include-processes 1234     # Only tap process 1234
           audiotee --include-processes 1234 5678 9012  # Tap only these processes
           audiotee --exclude-processes 1234 5678       # Tap everything except these

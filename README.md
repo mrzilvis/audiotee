@@ -1,12 +1,18 @@
 # AudioTee
 
-**⚠️ API Instability Warning: The AudioTee API is incredibly unstable at present and subject to change without notice.**
+**⚠️ API Instability Warning: The AudioTee API is unstable at present and subject to change without notice.**
 
-AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, allowing for clean redirection of audio data to files or pipes. It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
+AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, allowing for clean redirection of audio data to files or pipes. Conceptually, that means you can do this:
 
-By default, it taps the audio output from **all** running processes. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
+```bash
+/path/to/audiotee > output.pcm
+```
 
-My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome.
+ It captures system audio using the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
+
+By default, audiotee captures audio output from **all** running processes. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
+
+My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome. I have internal variations of audiotee which allow recording mic input as well as system audio, and I'm open to making that part of the main API.
 
 Recording system audio is harder than it should be on macOS, and folks often wrestle with outdated advice and poorly documented APIs. It's a boring problem which stands in the way of lots of fun applications. There's more code here than you need to solve this problem yourself: the main classes of interest are probably [`Core/AudioTapManager`](https://github.com/makeusabrew/audiotee/blob/main/Sources/Core/AudioTapManager.swift) and [`Core/AudioRecorder`](https://github.com/makeusabrew/audiotee/blob/main/Sources/Core/AudioRecorder.swift). Everything's wired together in [`CLI/AudioTee`](https://github.com/makeusabrew/audiotee/blob/main/Sources/CLI/AudioTee.swift). The rest is just CLI configuration support, output formatting logic, and some utility functions you could probably live without.
 
@@ -29,10 +35,14 @@ swift run
 More usefully, you can redirect the output to a file:
 
 ```bash
-swift run > captured_audio.pcm
+swift run audiotee --sample-rate 16000 > output.pcm
 ```
 
-If you're not playing audio when you run it, the PCM file will contain silence (zeroes).
+You can play the PCM stream back using something like `ffplay`:
+
+```bash
+ffplay -f s16le -ar 16000 output.pcm
+```
 
 ## Build
 
@@ -52,7 +62,7 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 ./audiotee
 
 # Redirect audio to a file
-./audiotee > captured_audio.pcm
+./audiotee > output.pcm
 
 # Pipe to another program
 ./audiotee | your_audio_processing_tool
@@ -64,7 +74,7 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 ### Audio conversion
 
 Note that performing sample rate conversion will also convert the output bit depth to
-16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but in any case it's a behaviour worth being aware of.
+16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but it's a behaviour worth being aware of.
 
 ```bash
 # Convert to 16kHz mono (useful for ASR services)
@@ -160,7 +170,9 @@ All program logs are written to `stderr` and can be captured separately:
 ## Permissions
 
 There is no provision in the code to pre-emptively check for the required `NSAudioCaptureUsageDescription` permission,
-so you'll be prompted the first time AudioTee tries to record anything. If you want to check and/or request permissions ahead of time, check out [AudioCap's clever TCC probing approach](https://github.com/insidegui/AudioCap/blob/main/AudioCap/ProcessTap/AudioRecordingPermission.swift).
+so you'll be prompted the first time AudioTee tries to record anything. If you want to check and/or request permissions ahead of time, check out [AudioCap's clever TCC probing approach](https://github.com/insidegui/AudioCap/blob/main/AudioCap/ProcessTap/AudioRecordingPermission.swift). Note that some terminal emulators like
+iTerm don't always prompt for these permissions (the macOS builtin terminal definitely does), so you
+might need to grant them ahead of time if audiotee looks like it's running but never records anything.
 
 ## References
 
