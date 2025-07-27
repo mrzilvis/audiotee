@@ -129,25 +129,6 @@ AudioTee writes raw PCM audio data directly to `stdout` in chunks. All logging, 
 - **Endianness**: Little-endian
 - **Chunk duration**: 200ms by default (configurable)
 
-### Consuming output
-
-The simplest way to consume AudioTee's output is to redirect it to a file:
-
-```bash
-./audiotee > captured_audio.pcm
-```
-
-You can then process this raw PCM file with tools like:
-- **FFmpeg**: `ffmpeg -f f32le -ar 48000 -ac 1 -i captured_audio.pcm output.wav`
-- **SoX**: `sox -t f32 -r 48000 -c 1 captured_audio.pcm output.wav`
-- **Audacity**: Import as raw data with the appropriate settings
-
-For real-time processing, pipe the output to your application:
-
-```bash
-./audiotee | your_audio_processing_tool
-```
-
 ### Logs and monitoring
 
 All program logs are written to `stderr` and can be captured separately:
