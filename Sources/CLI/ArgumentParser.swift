@@ -189,11 +189,6 @@ class SimpleArgumentParser {
         throw ArgumentParserError.invalidValue(optionName, value)
       }
       return doubleValue as! T
-    } else if type == OutputFormat.self {
-      guard let format = OutputFormat(rawValue: value) else {
-        throw ArgumentParserError.invalidValue(optionName, value)
-      }
-      return format as! T
     }
 
     throw ArgumentParserError.invalidValue(optionName, value)

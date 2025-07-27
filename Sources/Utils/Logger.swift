@@ -24,8 +24,8 @@ public class Logger {
     let message = Message(type: type, data: data)
     do {
       let jsonData = try jsonEncoder.encode(message)
-      FileHandle.standardOutput.write(jsonData)
-      FileHandle.standardOutput.write("\n".data(using: .utf8)!)
+      FileHandle.standardError.write(jsonData)
+      FileHandle.standardError.write("\n".data(using: .utf8)!)
     } catch {
       // TODO: handle at some point
     }
