@@ -2,7 +2,7 @@
 
 **⚠️ API Instability Warning: The AudioTee API is incredibly unstable at present and subject to change without notice.**
 
-AudioTee captures your Mac's system audio output and writes raw PCM audio data directly to `stdout`. All logging and metadata information is written to `stderr`, allowing for clean redirection of audio data to files or pipes. It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
+AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, allowing for clean redirection of audio data to files or pipes. It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
 
 By default, it taps the audio output from **all** running processes. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
 

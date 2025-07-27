@@ -7,12 +7,12 @@ public class AudioBuffer {
   private var readIndex: Int = 0
   private var availableBytes: Int = 0
   private let maxBufferSize: Int
-  
+
   private let bytesPerChunk: Int
   private let chunkDuration: Double
 
   public init(format: AudioStreamBasicDescription, chunkDuration: Double = 0.2) {
-    
+
     // Pre-calculate chunk parameters
     let bytesPerFrame = Int(format.mBytesPerFrame)
     let samplesPerChunk = Int(format.mSampleRate * chunkDuration)
@@ -22,24 +22,26 @@ public class AudioBuffer {
     // Calculate max buffer size to hold ~10 seconds of audio, way more than the maximum we allow
     let bytesPerSecond = Int(format.mSampleRate) * bytesPerFrame
     self.maxBufferSize = bytesPerSecond * 10
-    
+
     // Pre-allocated ring buffer
     self.buffer = Array(repeating: 0, count: maxBufferSize)
   }
 
   public func append(_ data: Data) {
     guard availableBytes + data.count <= maxBufferSize else {
-      Logger.error("Audio buffer overflow", context: [
-        "requested": String(data.count),
-        "available": String(maxBufferSize - availableBytes)
-      ])
+      Logger.error(
+        "Audio buffer overflow",
+        context: [
+          "requested": String(data.count),
+          "available": String(maxBufferSize - availableBytes),
+        ])
       return
     }
-    
+
     data.withUnsafeBytes { bytes in
       let sourceBytes = bytes.bindMemory(to: UInt8.self)
       let dataSize = sourceBytes.count
-      
+
       // Check if we can copy in one block (no wrap-around)
       if writeIndex + dataSize <= maxBufferSize {
         // only one write needed
@@ -49,14 +51,14 @@ public class AudioBuffer {
         // two writes needed due to wrap-around
         let firstChunkSize = maxBufferSize - writeIndex
         let secondChunkSize = dataSize - firstChunkSize
-        
+
         buffer.replaceSubrange(writeIndex..<maxBufferSize, with: sourceBytes.prefix(firstChunkSize))
         buffer.replaceSubrange(0..<secondChunkSize, with: sourceBytes.suffix(secondChunkSize))
-        
+
         writeIndex = secondChunkSize
       }
     }
-    
+
     availableBytes += data.count
   }
 
@@ -75,7 +77,7 @@ public class AudioBuffer {
     guard availableBytes >= bytesPerChunk else { return nil }
 
     var chunkData = Data(capacity: bytesPerChunk)
-    
+
     // Check if we can copy in one block (no wrap-around)
     if readIndex + bytesPerChunk <= maxBufferSize {
       // one copy needed
@@ -85,19 +87,18 @@ public class AudioBuffer {
       // two copies needed due to wrap-around
       let firstChunkSize = maxBufferSize - readIndex
       let secondChunkSize = bytesPerChunk - firstChunkSize
-      
+
       chunkData.append(contentsOf: buffer[readIndex..<maxBufferSize])
       chunkData.append(contentsOf: buffer[0..<secondChunkSize])
-      
+
       readIndex = secondChunkSize
     }
-    
+
     availableBytes -= bytesPerChunk
 
     let packet = AudioPacket(
       timestamp: Date(),
       duration: chunkDuration,
-      peakAmplitude: 0.0,
       rawAudioData: chunkData
     )
 
