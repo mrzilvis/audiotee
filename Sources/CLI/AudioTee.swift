@@ -2,7 +2,6 @@ import CoreAudio
 import Foundation
 
 struct AudioTee {
-  var format: OutputFormat = .auto
   var includeProcesses: [Int32] = []
   var excludeProcesses: [Int32] = []
   var mute: Bool = false
@@ -18,11 +17,6 @@ struct AudioTee {
       discussion: """
         AudioTee captures system audio using Core Audio taps and streams it as structured output.
 
-        Output formats:
-        • json: Base64-encoded audio in JSON messages (safe for terminals)
-        • binary: Raw binary audio with JSON metadata headers (efficient for pipes)
-        • auto: Automatically choose based on whether stdout is a terminal (default)
-
         Process filtering:
         • include-processes: Only tap specified process IDs (empty = all processes)
         • exclude-processes: Tap all processes except specified ones
@@ -30,8 +24,6 @@ struct AudioTee {
 
         Examples:
           audiotee                              # Auto format, tap all processes
-          audiotee --format=json                # Always use JSON format
-          audiotee --format=binary              # Always use binary format
           audiotee --sample-rate=16000          # Convert to 16kHz mono for ASR
           audiotee --sample-rate=8000           # Convert to 8kHz for telephony
           audiotee --include-processes 1234     # Only tap process 1234
@@ -42,7 +34,6 @@ struct AudioTee {
     )
 
     // Configure arguments
-    parser.addOption(name: "format", shortName: "f", help: "Output format", defaultValue: "auto")
     parser.addArrayOption(
       name: "include-processes",
       help: "Process IDs to include (space-separated, empty = all processes)")
@@ -62,7 +53,6 @@ struct AudioTee {
       var audioTee = AudioTee()
 
       // Extract values
-      audioTee.format = try parser.getValue("format", as: OutputFormat.self)
       audioTee.includeProcesses = try parser.getArrayValue("include-processes", as: Int32.self)
       audioTee.excludeProcesses = try parser.getArrayValue("exclude-processes", as: Int32.self)
       audioTee.mute = parser.getFlag("mute")
@@ -102,7 +92,6 @@ struct AudioTee {
     setupSignalHandlers()
 
     Logger.info("Starting AudioTee...")
-    Logger.debug("Using output format: \(format)")
 
     // Validate chunk duration
     guard chunkDuration > 0 && chunkDuration <= 5.0 else {
@@ -143,7 +132,7 @@ struct AudioTee {
       throw ExitCode.failure
     }
 
-    let outputHandler = createOutputHandler(for: format)
+    let outputHandler = BinaryAudioOutputHandler()
     let recorder = AudioRecorder(
       deviceID: deviceID, outputHandler: outputHandler, convertToSampleRate: sampleRate,
       chunkDuration: chunkDuration)
@@ -169,17 +158,6 @@ struct AudioTee {
     signal(SIGTERM) { _ in
       Logger.info("Received SIGTERM, initiating graceful shutdown...")
       CFRunLoopStop(CFRunLoopGetMain())
-    }
-  }
-
-  private func createOutputHandler(for format: OutputFormat) -> AudioOutputHandler {
-    switch format {
-    case .json:
-      return JSONAudioOutputHandler()
-    case .binary:
-      return BinaryAudioOutputHandler()
-    case .auto:
-      return AutoAudioOutputHandler()
     }
   }
 

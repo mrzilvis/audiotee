@@ -119,7 +119,6 @@ public class AudioFormatConverter {
     return AudioPacket(
       timestamp: packet.timestamp,
       duration: packet.duration,
-      peakAmplitude: packet.peakAmplitude,
       rawAudioData: outputData
     )
   }

@@ -1,8 +1,10 @@
 # AudioTee
 
-AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals, either in base64-encoded JSON (good for humans, easy on terminals) or binary (good for other programs). It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualize it, etc.
+**⚠️ API Instability Warning: The AudioTee API is incredibly unstable at present and subject to change without notice.**
 
-By default, it taps the audio output from **all** running process and selects the most appropriate audio chunk output format to use based on the presence of a tty. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
+AudioTee captures your Mac's system audio output and writes raw PCM audio data directly to `stdout`. All logging and metadata information is written to `stderr`, allowing for clean redirection of audio data to files or pipes. It uses the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
+
+By default, it taps the audio output from **all** running processes. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
 
 My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome.
 
@@ -16,7 +18,7 @@ Recording system audio is harder than it should be on macOS, and folks often wre
 
 ## Quick start
 
-The following will start capturing audio output from all running programs and write base64-encoded chunks of it to your terminal every 200ms:
+The following will start capturing audio output from all running programs and write raw PCM audio data to your terminal:
 
 ```bash
 git clone git@github.com:makeusabrew/audiotee.git
@@ -24,7 +26,13 @@ cd audiotee
 swift run
 ```
 
-If you're not playing audio when you run it, you'll just see packets full of `AAAAA...` - the base64 version of a bunch of zeroes.
+More usefully, you can redirect the output to a file:
+
+```bash
+swift run > captured_audio.pcm
+```
+
+If you're not playing audio when you run it, the PCM file will contain silence (zeroes).
 
 ## Build
 
@@ -40,14 +48,17 @@ swift build -c release
 Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64-apple-macosx/release/audiotee` for a release build on Apple Silicon.
 
 ```bash
-# Auto-detect output format (JSON in terminal, binary when piped)
+# Write raw PCM audio to stdout (logs go to stderr)
 ./audiotee
 
-# Always use JSON format (terminal-safe)
-./audiotee --format json
+# Redirect audio to a file
+./audiotee > captured_audio.pcm
 
-# Always use binary format (pipe-optimised)
-./audiotee --format binary
+# Pipe to another program
+./audiotee | your_audio_processing_tool
+
+# Redirect logs as well
+./audiotee > captured_audio.pcm 2> audiotee.log
 ```
 
 ### Audio conversion
@@ -94,147 +105,52 @@ Note that trying to include or exclude a PID which isn't currently playing audio
 ./audiotee --chunk-duration 0.1
 ```
 
-## Output formats
+## Output
 
-AudioTee supports two output formats optimised for different use cases:
+AudioTee writes raw PCM audio data directly to `stdout` in chunks. All logging, metadata, and status information is written to `stderr`, allowing for clean separation of audio data from program output.
 
-### JSON format (`--format json` or auto in terminal)
+### Audio format
 
-JSON messages to stdout, one per line. Audio data is base64-encoded for terminal safety.
-
-### Binary format (`--format binary` or auto when piped)
-
-JSON metadata lines followed by raw binary audio data. More efficient for piping to other processes.
-
-## Protocol
-
-### Message types
-
-All messages (except raw binary audio chunks) follow this envelope structure:
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "...",
-  "data": { ... }
-}
-```
-
-#### 1. Metadata
-
-Sent once at startup to describe the audio format:
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "metadata",
-  "data": {
-    "sample_rate": 48000,
-    "channels_per_frame": 1,
-    "bits_per_channel": 32,
-    "is_float": true,
-    "capture_mode": "audio",
-    "device_name": null,
-    "device_uid": null,
-    "encoding": "pcm_f32le"
-  }
-}
-```
-
-#### 2. Stream start
-
-Indicates audio data will follow:
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "stream_start",
-  "data": null
-}
-```
-
-#### 3. Audio data
-
-**JSON format:**
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "audio",
-  "data": {
-    "timestamp": "2024-03-21T15:30:45.123Z",
-    "duration": 0.2,
-    "peak_amplitude": 0.45,
-    "audio_data": "base64_encoded_raw_audio..."
-  }
-}
-```
-
-**Binary format:**
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "audio",
-  "data": {
-    "timestamp": "2024-03-21T15:30:45.123Z",
-    "duration": 0.2,
-    "peak_amplitude": 0.45,
-    "audio_length": 9600
-  }
-}
-```
-
-_Followed immediately by 9600 bytes of raw binary audio data_
-
-#### 4. Stream stop
-
-Sent when recording stops:
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "stream_stop",
-  "data": null
-}
-```
-
-#### 5. Log messages
-
-Info, error, and debug messages (useful for monitoring):
-
-```json
-{
-  "timestamp": "2024-03-21T15:30:45.123Z",
-  "message_type": "info",
-  "data": {
-    "message": "Starting AudioTee...",
-    "context": { "output_format": "auto" }
-  }
-}
-```
+- **Format**: Raw PCM audio data
+- **Channels**: Mono (1 channel)
+- **Sample rate**: Matches your output device's sample rate by default (configurable)
+- **Bit depth**: 32-bit float by default, or 16-bit when sample rate conversion is performed
+- **Endianness**: Little-endian
+- **Chunk duration**: 200ms by default (configurable)
 
 ### Consuming output
 
-**JSON format:**
+The simplest way to consume AudioTee's output is to redirect it to a file:
 
-1. Parse each line as JSON using the envelope structure
-2. Use `metadata` message to understand the audio format
-3. For `audio` messages, decode `audio_data` from base64 to get raw PCM data
-4. Do something with each chunk of data
+```bash
+./audiotee > captured_audio.pcm
+```
 
-**Binary format:**
+You can then process this raw PCM file with tools like:
+- **FFmpeg**: `ffmpeg -f f32le -ar 48000 -ac 1 -i captured_audio.pcm output.wav`
+- **SoX**: `sox -t f32 -r 48000 -c 1 captured_audio.pcm output.wav`
+- **Audacity**: Import as raw data with the appropriate settings
 
-1. Parse JSON metadata lines using the envelope structure
-2. Use `metadata` message to understand the audio format
-3. For `audio` messages, read `audio_length` bytes of raw binary data after the JSON line
-4. Do something with each chunk of data
+For real-time processing, pipe the output to your application:
 
-**Note**: binary is actually a mixed mode; JSON during boot, JSON packet header information preceding each binary chunk.
+```bash
+./audiotee | your_audio_processing_tool
+```
+
+### Logs and monitoring
+
+All program logs are written to `stderr` and can be captured separately:
+
+```bash
+# Capture audio and logs separately
+./audiotee > audio.pcm 2> audiotee.log
+
+# View logs in real-time while capturing audio
+./audiotee > audio.pcm 2>&1 | grep "AudioTee"
+```
 
 ## Command Line options
 
-- `--format, -f`: Output format (`json`, `binary`, `auto`) [default: `auto`]
 - `--include-processes`: Process IDs to tap (space-separated, empty = all processes)
 - `--exclude-processes`: Process IDs to exclude (space-separated, empty = none)
 - `--mute`: Mute processes being tapped
