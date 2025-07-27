@@ -2,12 +2,13 @@
 
 **⚠️ API Instability Warning: The AudioTee API is unstable at present and subject to change without notice.**
 
-AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, meaning at its simplest you can
-capture system audio to a file like this:
+AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, meaning at its simplest you can capture system audio to a file like this:
 
 ```bash
 /path/to/audiotee > output.pcm
 ```
+
+It's more likely that you want to capture this output programmatically. Check out [AudioTee.js](https://github.com/makeusabrew/audioteejs) for a simple Node.js package.
 
 System audio is captured using the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
 
