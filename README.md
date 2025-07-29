@@ -79,7 +79,10 @@ Note that performing _any_ sample rate conversion will also convert the output b
 16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but it's a non-obvious behaviour worth being aware of.
 
 ```bash
-# Convert to 16kHz mono (useful for ASR services)
+# No sample rate preserves your device's default (probably 44.1 or 48kHz with 32-bit float bit depth)
+./audiotee
+
+# Any sample rate (even one matching your device default) converts to 16-bit signed integers (half the bandwidth)
 ./audiotee --sample-rate 16000
 
 # Other supported sample rates: 22050, 24000, 32000, 44100, 48000
@@ -152,15 +155,15 @@ All program logs are written to `stderr` and can be captured separately:
 
 ## Permissions
 
-There is no provision in the code to pre-emptively check for the required `NSAudioCaptureUsageDescription` permission,
-so you'll be prompted the first time AudioTee tries to record anything. If you want to check and/or request permissions ahead of time, check out [AudioCap's clever TCC probing approach](https://github.com/insidegui/AudioCap/blob/main/AudioCap/ProcessTap/AudioRecordingPermission.swift). Note that some terminal emulators like
-iTerm don't always prompt for these permissions (the macOS builtin terminal definitely does), so you
-might need to grant them ahead of time if audiotee looks like it's running but never records anything.
+There is no provision in the code to pre-emptively check for the required `NSAudioCaptureUsageDescription` permission, so you'll be prompted the first time AudioTee tries to record anything. Note that some terminal emulators like iTerm don't always prompt for these permissions (though the macOS builtin terminal definitely does), so you might need to grant them ahead of time if audiotee runs but never records anything.
 
-## References
+If you want to check and/or request permissions ahead of time, check out [AudioCap's fantastic TCC probing approach](https://github.com/insidegui/AudioCap/blob/main/AudioCap/ProcessTap/AudioRecordingPermission.swift). 
+
+## References / useful links
 
 - [Apple Core Audio Taps Documentation](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps)
 - [AudioCap Implementation](https://github.com/insidegui/AudioCap)
+- [AudioTee.js](https://github.com/makeusabrew/audioteejs)
 
 ## License
 
