@@ -8,7 +8,7 @@ AudioTee captures your Mac's system audio output and writes it in PCM encoded ch
 /path/to/audiotee > output.pcm
 ```
 
-It's more likely that you want to capture this output programmatically. Check out [AudioTee.js](https://github.com/makeusabrew/audioteejs) for a simple Node.js package.
+It's more likely that you want to capture this output programmatically. Check out [AudioTee.js](https://github.com/makeusabrew/audioteejs) for a simple Node.js package which does this.
 
 System audio is captured using the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
 
@@ -26,7 +26,7 @@ Recording system audio is harder than it should be on macOS, and folks often wre
 
 ## Quick start
 
-The following will start capturing audio output from all running programs and write raw PCM audio data to your terminal:
+The following will start capturing audio output from all running programs and write binary chunks of raw PCM audio data to your terminal:
 
 ```bash
 git clone git@github.com:makeusabrew/audiotee.git
@@ -75,8 +75,8 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 
 ### Audio conversion
 
-Note that performing sample rate conversion will also convert the output bit depth to
-16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but it's a behaviour worth being aware of.
+Note that performing _any_ sample rate conversion will also convert the output bit depth to
+16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but it's a non-obvious behaviour worth being aware of.
 
 ```bash
 # Convert to 16kHz mono (useful for ASR services)
