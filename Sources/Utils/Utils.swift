@@ -89,9 +89,9 @@ func translatePIDsToProcessObjects(_ pids: [Int32]) throws -> [AudioObjectID] {
 }
 
 extension String {
-    func print(to fileHandle: FileHandle) {
-        if let data = (self + "\n").data(using: .utf8) {
-            fileHandle.write(data)
-        }
+  func print(to fileHandle: FileHandle) {
+    if let data = (self + "\n").data(using: .utf8) {
+      fileHandle.write(data)
     }
+  }
 }

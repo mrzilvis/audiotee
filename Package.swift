@@ -4,11 +4,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "audiotee",
-    platforms: [
-        .macOS("14.2")
-    ],
-    targets: [
-        .executableTarget(name: "audiotee")
-    ]
+  name: "audiotee",
+  platforms: [
+    .macOS("14.2")
+  ],
+  targets: [
+    .executableTarget(name: "audiotee")
+  ]
 )

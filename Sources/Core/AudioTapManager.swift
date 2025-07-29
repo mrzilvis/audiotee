@@ -56,11 +56,11 @@ class AudioTapManager {
     description.processes = try translatePIDsToProcessObjects(config.processes)  // Properly translate PIDs
     description.isPrivate = true
     description.muteBehavior = config.muteBehavior.coreAudioValue
-    description.isMixdown = true 
+    description.isMixdown = true
     description.isMono = true
     description.isExclusive = config.isExclusive
-    description.deviceUID = nil // system default
-    description.stream = 0 // first stream of output device
+    description.deviceUID = nil  // system default
+    description.stream = 0  // first stream of output device
 
     Logger.debug(
       "Tap description configured",

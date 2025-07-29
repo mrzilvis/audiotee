@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// Protocol for handling audio output in different formats
