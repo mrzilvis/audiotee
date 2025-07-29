@@ -6,7 +6,7 @@ public class BinaryAudioOutputHandler: AudioOutputHandler {
 
   public func handleAudioPacket(_ packet: AudioPacket) {
     // Write raw binary audio data directly to stdout
-    FileHandle.standardOutput.write(packet.rawAudioData)
+    FileHandle.standardOutput.write(packet.data)
   }
 
   public func handleMetadata(_ metadata: AudioStreamMetadata) {

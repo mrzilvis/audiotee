@@ -7,9 +7,6 @@ public enum MessageType: String, Codable {
   case streamStart = "stream_start"
   case streamStop = "stream_stop"
 
-  // Audio data
-  case audio
-
   // Logging
   case info
   case error

@@ -96,12 +96,10 @@ public class AudioBuffer {
 
     availableBytes -= bytesPerChunk
 
-    let packet = AudioPacket(
+    return AudioPacket(
       timestamp: Date(),
       duration: chunkDuration,
-      rawAudioData: chunkData
+      data: chunkData
     )
-
-    return packet
   }
 }

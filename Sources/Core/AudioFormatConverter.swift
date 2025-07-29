@@ -54,7 +54,7 @@ public class AudioFormatConverter {
   }
 
   public func transform(_ packet: AudioPacket) -> AudioPacket {
-    let inputData = packet.rawAudioData
+    let inputData = packet.data
 
     // Calculate frame counts
     let inputFrameCount =
@@ -119,16 +119,10 @@ public class AudioFormatConverter {
     return AudioPacket(
       timestamp: packet.timestamp,
       duration: packet.duration,
-      rawAudioData: outputData
+      data: outputData
     )
   }
-}
 
-// MARK: - Convenience Constructors
-
-extension AudioFormatConverter {
-  /// Create a converter to a specific sample rate with mono PCM 16-bit output
-  /// Since the tap already converts to mono, we hardcode channels to 1
   public static func toSampleRate(
     _ sampleRate: Double, from sourceFormat: AudioStreamBasicDescription
   ) throws -> AudioFormatConverter {
@@ -145,17 +139,7 @@ extension AudioFormatConverter {
     return try AudioFormatConverter(sourceFormat: sourceFormat, targetFormat: targetFormat)
   }
 
-  /// Common sample rates for validation
-  public static let supportedSampleRates: [Double] = [
-    8000, 16000, 22050, 24000, 32000, 44100, 48000,
-  ]
-
-  /// Validate if a sample rate is supported
   public static func isValidSampleRate(_ sampleRate: Double) -> Bool {
-    return supportedSampleRates.contains(sampleRate)
+    return [8000, 16000, 22050, 24000, 32000, 44100, 48000].contains(sampleRate)
   }
 }
-
-// MARK: - Error Types
-
-// AudioConverterError moved to Sources/Core/Errors/AudioTeeErrors.swift
