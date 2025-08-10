@@ -57,7 +57,7 @@ class AudioTapManager {
     description.isPrivate = true
     description.muteBehavior = config.muteBehavior.coreAudioValue
     description.isMixdown = true
-    description.isMono = true
+    description.isMono = config.isMono
     description.isExclusive = config.isExclusive
     description.deviceUID = nil  // system default
     description.stream = 0  // first stream of output device

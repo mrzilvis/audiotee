@@ -130,11 +130,11 @@ public class AudioFormatConverter {
     targetFormat.mSampleRate = sampleRate
     targetFormat.mFormatID = kAudioFormatLinearPCM
     targetFormat.mFormatFlags = kAudioFormatFlagIsPacked | kAudioFormatFlagIsSignedInteger
-    targetFormat.mBytesPerPacket = 2
     targetFormat.mFramesPerPacket = 1
-    targetFormat.mBytesPerFrame = 2
-    targetFormat.mChannelsPerFrame = 1  // Always mono since tap handles this
     targetFormat.mBitsPerChannel = 16
+    targetFormat.mChannelsPerFrame = sourceFormat.mChannelsPerFrame
+    targetFormat.mBytesPerFrame = (targetFormat.mBitsPerChannel / 8) * sourceFormat.mChannelsPerFrame
+    targetFormat.mBytesPerPacket = targetFormat.mFramesPerPacket * targetFormat.mBytesPerFrame
 
     return try AudioFormatConverter(sourceFormat: sourceFormat, targetFormat: targetFormat)
   }
