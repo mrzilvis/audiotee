@@ -12,7 +12,7 @@ It's more likely that you want to capture this output programmatically. Check ou
 
 System audio is captured using the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
 
-By default, audiotee captures audio output from **all** running processes. Tap output is forced to `mono` (not yet configurable) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
+By default, audiotee captures audio output from **all** running processes. Tap output defaults to `mono` (configurable via the `--stereo` flag) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
 
 My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome. I have internal variations (and, franky, improvements) of audiotee which allow recording mic input as well as system audio, and I'm open to making that part of the main API.
 
@@ -127,7 +127,7 @@ AudioTee writes raw PCM audio data directly to `stdout` in chunks. All logging, 
 ### Audio format
 
 - **Format**: Raw PCM audio data
-- **Channels**: Mono (1 channel)
+- **Channels**: 1 in Mono mode (default), 2 in stereo mode
 - **Sample rate**: Matches your output device's sample rate by default (configurable)
 - **Bit depth**: 32-bit float by default, or 16-bit when sample rate conversion is performed
 - **Endianness**: Little-endian
