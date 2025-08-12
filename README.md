@@ -2,19 +2,21 @@
 
 **⚠️ API Instability Warning: The AudioTee API is unstable at present and subject to change without notice.**
 
-AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, meaning at its simplest you can capture system audio to a file like this:
+AudioTee captures your Mac's system audio output and writes it in PCM encoded chunks to `stdout` at regular intervals. All logging and metadata information is written to `stderr`, meaning at its simplest you can capture whatever's playing through your speakers to a file like this:
 
 ```bash
 /path/to/audiotee > output.pcm
 ```
 
-It's more likely that you want to capture this output programmatically. Check out [AudioTee.js](https://github.com/makeusabrew/audioteejs) for a simple Node.js package which does this.
+It's more likely you want to capture this output programmatically. Check out [AudioTee.js](https://github.com/makeusabrew/audioteejs) for a simple Node.js package which does this.
 
-System audio is captured using the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - stream it somewhere else, save it to disk, visualise it, etc.
+System audio is captured using the [Core Audio taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) API introduced in macOS 14.2 (released in December 2023). You can do whatever you want with this audio - save it to disk, visualise it, transcribe it, etc.
 
-By default, audiotee captures audio output from **all** running processes. Tap output defaults to `mono` (configurable via the `--stereo` flag) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
+By default, AudioTee captures audio output from **all** running processes. Tap output defaults to `mono` (configurable via the `--stereo` flag) and preserves your output device's sample rate (configurable via the `--sample-rate` flag). Only the default output device is currently supported.
 
-My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome. I have internal variations (and, franky, improvements) of audiotee which allow recording mic input as well as system audio, and I'm open to making that part of the main API.
+My original (and so far only) use case is streaming audio to a parent process which communicates with a realtime ASR service, so AudioTee makes some design decisions you might not agree with. Open an issue or a PR and we can talk about them. I'm also no Swift developer, so contributions improving codebase idioms and general hygiene are welcome. I have internal variations (and, frankly, improvements) of AudioTee which allow recording mic input as well as system audio, and I'm open to making that part of the main API.
+
+## Why?
 
 Recording system audio is harder than it should be on macOS, and folks often wrestle with outdated advice and poorly documented APIs. It's a boring problem which stands in the way of lots of fun applications. There's more code here than you need to solve this problem yourself: the main classes of interest are probably [`Core/AudioTapManager`](https://github.com/makeusabrew/audiotee/blob/main/Sources/Core/AudioTapManager.swift) and [`Core/AudioRecorder`](https://github.com/makeusabrew/audiotee/blob/main/Sources/Core/AudioRecorder.swift). Everything's wired together in [`CLI/AudioTee`](https://github.com/makeusabrew/audiotee/blob/main/Sources/CLI/AudioTee.swift). The rest is just CLI configuration support, output formatting logic, and some utility functions you could probably live without.
 
@@ -76,7 +78,7 @@ Replace the path below with `.build/<arch>/<target>/audiotee`, e.g. `build/arm64
 ### Audio conversion
 
 Note that performing _any_ sample rate conversion will also convert the output bit depth to
-16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for half the output chunk size. For ASR services, 16-bit is sufficient, but it's a non-obvious behaviour worth being aware of.
+16-bit - assuming an original depth of 32-bit this results in a loss of dynamic range in exchange for a 50% reduction in output size. For ASR services, 16-bit is sufficient, but it's a non-obvious behaviour worth being aware of.
 
 ```bash
 # No sample rate preserves your device's default (probably 44.1 or 48kHz with 32-bit float bit depth)
@@ -122,7 +124,7 @@ Note that trying to include or exclude a PID which isn't currently playing audio
 
 ## Output
 
-AudioTee writes raw PCM audio data directly to `stdout` in chunks. All logging, metadata, and status information is written to `stderr`, allowing for clean separation of audio data from program output.
+AudioTee writes raw PCM audio data directly to `stdout` in chunks. All logging, metadata, and status information is written to `stderr`.
 
 ### Audio format
 
@@ -150,6 +152,7 @@ All program logs are written to `stderr` and can be captured separately:
 - `--include-processes`: Process IDs to tap (space-separated, empty = all processes)
 - `--exclude-processes`: Process IDs to exclude (space-separated, empty = none)
 - `--mute`: Mute processes being tapped
+- `--stereo`: Record in stereo
 - `--sample-rate`: Target sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)
 - `--chunk-duration`: Audio chunk duration in seconds [default: 0.2, max: 5.0]
 
