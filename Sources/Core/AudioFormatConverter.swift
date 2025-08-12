@@ -133,7 +133,8 @@ public class AudioFormatConverter {
     targetFormat.mFramesPerPacket = 1
     targetFormat.mBitsPerChannel = 16
     targetFormat.mChannelsPerFrame = sourceFormat.mChannelsPerFrame
-    targetFormat.mBytesPerFrame = (targetFormat.mBitsPerChannel / 8) * sourceFormat.mChannelsPerFrame
+    targetFormat.mBytesPerFrame =
+      (targetFormat.mBitsPerChannel / 8) * sourceFormat.mChannelsPerFrame
     targetFormat.mBytesPerPacket = targetFormat.mFramesPerPacket * targetFormat.mBytesPerFrame
 
     return try AudioFormatConverter(sourceFormat: sourceFormat, targetFormat: targetFormat)

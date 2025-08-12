@@ -5,12 +5,10 @@ import Foundation
 public class AudioRecorder {
   private var deviceID: AudioObjectID
   private var ioProcID: AudioDeviceIOProcID?
-  private var sourceFormat: AudioStreamBasicDescription?
-  private var finalFormat: AudioStreamBasicDescription?
+  private var finalFormat: AudioStreamBasicDescription!
   private var audioBuffer: AudioBuffer?
   private var outputHandler: AudioOutputHandler
   private var converter: AudioFormatConverter?
-  private var chunkDuration: Double
 
   init(
     deviceID: AudioObjectID, outputHandler: AudioOutputHandler, convertToSampleRate: Double? = nil,
@@ -18,11 +16,12 @@ public class AudioRecorder {
   ) {
     self.deviceID = deviceID
     self.outputHandler = outputHandler
-    self.chunkDuration = chunkDuration
 
     // Get source format and set up conversion if requested
     let sourceFormat = AudioFormatManager.getDeviceFormat(deviceID: deviceID)
-    self.sourceFormat = sourceFormat
+
+    // Set up the audio buffer using source format and configurable chunk duration
+    self.audioBuffer = AudioBuffer(format: sourceFormat, chunkDuration: chunkDuration)
 
     if let targetSampleRate = convertToSampleRate {
       // Validate sample rate
@@ -55,20 +54,12 @@ public class AudioRecorder {
   func startRecording() {
     Logger.debug("Starting audio recording")
 
-    guard let sourceFormat = sourceFormat, let finalFormat = finalFormat else {
-      fatalError("Audio formats not initialized")
-    }
-
-    // Set up the audio buffer using source format and configurable chunk duration
-    self.audioBuffer = AudioBuffer(format: sourceFormat, chunkDuration: chunkDuration)
-
-    // Log format info and send metadata for FINAL format
+    // Log format info and send metadata for final format
     AudioFormatManager.logFormatInfo(finalFormat)
     let metadata = AudioFormatManager.createMetadata(for: finalFormat)
     outputHandler.handleMetadata(metadata)
     outputHandler.handleStreamStart()
 
-    // Set up and start the IO proc
     setupAndStartIOProc()
 
     Logger.info("Audio device started successfully")
@@ -116,24 +107,23 @@ public class AudioRecorder {
     let audioData = Data(bytes: firstBuffer.mData!, count: Int(firstBuffer.mDataByteSize))
     audioBuffer?.append(audioData)
 
-    // Process and send complete chunks, applying conversion if needed
-    audioBuffer?.processChunks().forEach { packet in
-      let processedPacket = converter?.transform(packet) ?? packet
-      outputHandler.handleAudioPacket(processedPacket)
-    }
+    processAudioBuffer()
 
     return noErr
   }
 
   func stopRecording() {
-    // Send any remaining buffered audio, applying conversion if needed
+    processAudioBuffer()
+    outputHandler.handleStreamStop()
+    cleanupIOProc()
+  }
+
+  private func processAudioBuffer() {
+    // Process and send complete chunks, applying conversion if needed
     audioBuffer?.processChunks().forEach { packet in
       let processedPacket = converter?.transform(packet) ?? packet
       outputHandler.handleAudioPacket(processedPacket)
     }
-
-    outputHandler.handleStreamStop()
-    cleanupIOProc()
   }
 
   private func cleanupIOProc() {

@@ -7,10 +7,6 @@ class AudioTapManager {
   private var tapID: AudioObjectID?
   private var deviceID: AudioObjectID?
 
-  init() {
-    // Empty init - setup happens in setupAudioTap()
-  }
-
   deinit {
     Logger.debug("Cleaning up audio tap manager")
 
@@ -48,10 +44,8 @@ class AudioTapManager {
 
   private func createSystemAudioTap(with config: TapConfiguration) throws -> AudioObjectID {
     Logger.debug("Creating tap description")
-    // Create a tap description
     let description = CATapDescription()
 
-    // Configure the tap to capture all system audio
     description.name = "audiotee-tap"
     description.processes = try translatePIDsToProcessObjects(config.processes)  // Properly translate PIDs
     description.isPrivate = true
@@ -67,9 +61,7 @@ class AudioTapManager {
       context: [
         "name": description.name,
         "processes": String(describing: config.processes),
-        "private": String(description.isPrivate),
         "mute": String(describing: description.muteBehavior),
-        "mixdown": String(description.isMixdown),
         "mono": String(description.isMono),
         "exclusive": String(description.isExclusive),
       ])

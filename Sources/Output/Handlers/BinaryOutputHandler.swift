@@ -1,10 +1,8 @@
 import Foundation
 
-/// Binary output with JSON headers (pipe-optimised)
 public class BinaryAudioOutputHandler: AudioOutputHandler {
-  public init() {}
-
   public func handleAudioPacket(_ packet: AudioPacket) {
+    // TODO: should we use a DispatchQueue instead of writing directly?
     // Write raw binary audio data directly to stdout
     FileHandle.standardOutput.write(packet.data)
   }
