@@ -5,6 +5,7 @@ struct AudioTee {
   var includeProcesses: [Int32] = []
   var excludeProcesses: [Int32] = []
   var mute: Bool = false
+  var stereo: Bool = false
   var sampleRate: Double?
   var chunkDuration: Double = 0.2
 
@@ -40,6 +41,7 @@ struct AudioTee {
     parser.addArrayOption(
       name: "exclude-processes", help: "Process IDs to exclude (space-separated)")
     parser.addFlag(name: "mute", help: "Mute processes being tapped")
+    parser.addFlag(name: "stereo", help: "Records in stereo")
     parser.addOption(
       name: "sample-rate",
       help: "Target sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)")
@@ -56,6 +58,7 @@ struct AudioTee {
       audioTee.includeProcesses = try parser.getArrayValue("include-processes", as: Int32.self)
       audioTee.excludeProcesses = try parser.getArrayValue("exclude-processes", as: Int32.self)
       audioTee.mute = parser.getFlag("mute")
+      audioTee.stereo = parser.getFlag("stereo")
       audioTee.sampleRate = try parser.getOptionalValue("sample-rate", as: Double.self)
       audioTee.chunkDuration = try parser.getValue("chunk-duration", as: Double.self)
 
@@ -107,7 +110,8 @@ struct AudioTee {
     let tapConfig = TapConfiguration(
       processes: processes,
       muteBehavior: mute ? .muted : .unmuted,
-      isExclusive: isExclusive
+      isExclusive: isExclusive,
+      isMono: !stereo
     )
 
     let audioTapManager = AudioTapManager()
