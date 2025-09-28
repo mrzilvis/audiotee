@@ -46,4 +46,9 @@ public class Logger {
     let logData = LogData(message: message, context: context)
     writeMessage(.debug, data: logData)
   }
+
+  public static func warning(_ message: String, context: [String: String]? = nil) {
+    let logData = LogData(message: message, context: context)
+    writeMessage(.info, data: logData) // Use info level for warnings
+  }
 }

@@ -9,6 +9,13 @@ struct AudioTee {
   var sampleRate: Double?
   var chunkDuration: Double = 0.2
 
+  // Microphone recording options
+  var microphoneEnabled: Bool = false
+  var microphoneSampleRate: Double?
+  var microphoneDeviceUID: String?
+  var noSystemAudio: Bool = false
+  var enableStreamHeaders: Bool = false
+
   init() {}
 
   static func main() {
@@ -16,21 +23,27 @@ struct AudioTee {
       programName: "audiotee",
       abstract: "Capture system audio and stream to stdout",
       discussion: """
-        AudioTee captures system audio using Core Audio taps and streams it as structured output.
+        AudioTee captures system audio using Core Audio taps and optionally microphone input,
+        streaming both as structured output with stream identification.
 
         Process filtering:
         • include-processes: Only tap specified process IDs (empty = all processes)
         • exclude-processes: Tap all processes except specified ones
         • mute: How to handle processes being tapped
 
+        Microphone recording:
+        • microphone: Enable microphone recording as separate stream
+        • mic-sample-rate: Independent sample rate for microphone
+        • no-system-audio: Record only microphone (disable system audio tap)
+        • stream-headers: Enable binary stream headers for multi-stream output
+
         Examples:
-          audiotee                              # Auto format, tap all processes
-          audiotee --sample-rate 16000          # Convert to 16kHz mono for ASR
-          audiotee --sample-rate 8000           # Convert to 8kHz for telephony
-          audiotee --include-processes 1234     # Only tap process 1234
-          audiotee --include-processes 1234 5678 9012  # Tap only these processes
-          audiotee --exclude-processes 1234 5678       # Tap everything except these
-          audiotee --mute                       # Mute processes being tapped
+          audiotee                              # System audio only
+          audiotee --microphone                 # System audio + microphone with headers
+          audiotee --microphone --stream-headers # Explicit stream headers
+          audiotee --microphone --no-system-audio # Microphone only
+          audiotee --sample-rate 48000 --microphone --mic-sample-rate 16000 # Different rates
+          audiotee --include-processes 1234 --microphone  # Specific process + mic
         """
     )
 
@@ -48,6 +61,15 @@ struct AudioTee {
     parser.addOption(
       name: "chunk-duration", help: "Audio chunk duration in seconds", defaultValue: "0.2")
 
+    // Microphone recording arguments
+    parser.addFlag(name: "microphone", help: "Enable microphone recording as separate stream")
+    parser.addOption(
+      name: "mic-sample-rate",
+      help: "Microphone sample rate (8000, 16000, 22050, 24000, 32000, 44100, 48000)")
+    parser.addOption(name: "mic-device", help: "Microphone device UID (default: system default)")
+    parser.addFlag(name: "no-system-audio", help: "Record only microphone (disable system audio tap)")
+    parser.addFlag(name: "stream-headers", help: "Enable binary stream headers (auto-enabled with --microphone)")
+
     // Parse arguments
     do {
       try parser.parse()
@@ -61,6 +83,15 @@ struct AudioTee {
       audioTee.stereo = parser.getFlag("stereo")
       audioTee.sampleRate = try parser.getOptionalValue("sample-rate", as: Double.self)
       audioTee.chunkDuration = try parser.getValue("chunk-duration", as: Double.self)
+
+      // Microphone options
+      audioTee.microphoneEnabled = parser.getFlag("microphone")
+      audioTee.microphoneSampleRate = try parser.getOptionalValue("mic-sample-rate", as: Double.self)
+      audioTee.microphoneDeviceUID = try parser.getOptionalValue("mic-device", as: String.self)
+      audioTee.noSystemAudio = parser.getFlag("no-system-audio")
+      // Enable stream headers if explicitly requested, or if both system audio and microphone are enabled
+      audioTee.enableStreamHeaders = parser.getFlag("stream-headers") ||
+        (audioTee.microphoneEnabled && !audioTee.noSystemAudio)
 
       // Validate
       try audioTee.validate()
@@ -89,6 +120,16 @@ struct AudioTee {
       throw ArgumentParserError.validationFailed(
         "Cannot specify both --include-processes and --exclude-processes")
     }
+
+    if noSystemAudio && !microphoneEnabled {
+      throw ArgumentParserError.validationFailed(
+        "--no-system-audio requires --microphone to be enabled")
+    }
+
+    if !microphoneEnabled && (microphoneSampleRate != nil || microphoneDeviceUID != nil) {
+      throw ArgumentParserError.validationFailed(
+        "Microphone options require --microphone to be enabled")
+    }
   }
 
   func run() throws {
@@ -104,43 +145,95 @@ struct AudioTee {
       throw ExitCode.failure
     }
 
-    // Convert include/exclude processes to TapConfiguration format
-    let (processes, isExclusive) = convertProcessFlags()
-
-    let tapConfig = TapConfiguration(
-      processes: processes,
-      muteBehavior: mute ? .muted : .unmuted,
-      isExclusive: isExclusive,
-      isMono: !stereo
-    )
-
-    let audioTapManager = AudioTapManager()
-    do {
-      try audioTapManager.setupAudioTap(with: tapConfig)
-    } catch AudioTeeError.pidTranslationFailed(let failedPIDs) {
-      Logger.error(
-        "Failed to translate process IDs to audio objects",
-        context: [
-          "failed_pids": failedPIDs.map(String.init).joined(separator: ", "),
-          "suggestion": "Check that the process IDs exist and are running",
-        ])
-      throw ExitCode.failure
-    } catch {
-      Logger.error(
-        "Failed to setup audio tap", context: ["error": String(describing: error)])
-      throw ExitCode.failure
+    // Create shared output handler (stream-aware or legacy)
+    let outputHandler: AudioOutputHandler
+    if enableStreamHeaders {
+      outputHandler = StreamBinaryOutputHandler(enableStreamHeaders: true)
+    } else {
+      outputHandler = BinaryAudioOutputHandler()
     }
 
-    guard let deviceID = audioTapManager.getDeviceID() else {
-      Logger.error("Failed to get device ID from audio tap manager")
-      throw ExitCode.failure
+    // Variables to hold recorders and tap manager
+    var systemRecorder: AudioRecorder?
+    var microphoneRecorder: MicrophoneRecorder?
+    var audioTapManager: AudioTapManager?
+
+    // Set up system audio recording (unless disabled)
+    if !noSystemAudio {
+      Logger.info("Setting up system audio recording...")
+
+      let (processes, isExclusive) = convertProcessFlags()
+      let tapConfig = TapConfiguration(
+        processes: processes,
+        muteBehavior: mute ? .muted : .unmuted,
+        isExclusive: isExclusive,
+        isMono: !stereo
+      )
+
+      audioTapManager = AudioTapManager()
+      do {
+        try audioTapManager!.setupAudioTap(with: tapConfig)
+      } catch AudioTeeError.pidTranslationFailed(let failedPIDs) {
+        Logger.error(
+          "Failed to translate process IDs to audio objects",
+          context: [
+            "failed_pids": failedPIDs.map(String.init).joined(separator: ", "),
+            "suggestion": "Check that the process IDs exist and are running",
+          ])
+        throw ExitCode.failure
+      } catch {
+        Logger.error(
+          "Failed to setup audio tap", context: ["error": String(describing: error)])
+        throw ExitCode.failure
+      }
+
+      guard let deviceID = audioTapManager!.getDeviceID() else {
+        Logger.error("Failed to get device ID from audio tap manager")
+        throw ExitCode.failure
+      }
+
+      // Create system audio recorder with stream-aware output handler
+      if let streamHandler = outputHandler as? StreamBinaryOutputHandler {
+        systemRecorder = AudioRecorder(
+          deviceID: deviceID,
+          outputHandler: SystemAudioOutputAdapter(streamHandler: streamHandler),
+          convertToSampleRate: sampleRate,
+          chunkDuration: chunkDuration)
+      } else {
+        systemRecorder = AudioRecorder(
+          deviceID: deviceID, outputHandler: outputHandler, convertToSampleRate: sampleRate,
+          chunkDuration: chunkDuration)
+      }
+
+      systemRecorder?.startRecording()
+      Logger.info("System audio recording started")
     }
 
-    let outputHandler = BinaryAudioOutputHandler()
-    let recorder = AudioRecorder(
-      deviceID: deviceID, outputHandler: outputHandler, convertToSampleRate: sampleRate,
-      chunkDuration: chunkDuration)
-    recorder.startRecording()
+    // Set up microphone recording (if enabled)
+    if microphoneEnabled {
+      Logger.info("Setting up microphone recording...")
+
+      microphoneRecorder = MicrophoneRecorder(
+        outputHandler: outputHandler,
+        convertToSampleRate: microphoneSampleRate,
+        chunkDuration: chunkDuration,
+        deviceUID: microphoneDeviceUID
+      )
+
+      do {
+        try microphoneRecorder?.startRecording()
+        Logger.info("Microphone recording started")
+      } catch {
+        Logger.error("Failed to start microphone recording", context: ["error": String(describing: error)])
+        throw ExitCode.failure
+      }
+    }
+
+    // Ensure at least one recording source is active
+    if systemRecorder == nil && microphoneRecorder == nil {
+      Logger.error("No recording sources enabled")
+      throw ExitCode.failure
+    }
 
     // Run until the run loop is stopped (by signal handler)
     while true {
@@ -151,7 +244,8 @@ struct AudioTee {
     }
 
     Logger.info("Shutting down...")
-    recorder.stopRecording()
+    systemRecorder?.stopRecording()
+    microphoneRecorder?.stopRecording()
   }
 
   private func setupSignalHandlers() {
